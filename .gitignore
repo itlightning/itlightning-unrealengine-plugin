@@ -3,6 +3,10 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 
+# Distribute the plugin as a source plugin right now
+Binaries
+Intermediate
+
 # User-specific files
 *.rsuser
 *.suo

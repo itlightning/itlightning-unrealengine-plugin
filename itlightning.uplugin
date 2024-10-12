@@ -1,0 +1,34 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "itlightning",
+	"Description": "Ship game engine logs to IT Lightning, a cost effective, petabyte-scale cloud logging service that's actually a joy to use",
+	"Category": "Other",
+	"CreatedBy": "IT Lightning, LLC",
+	"CreatedByURL": "https://itlightning.com/",
+	"DocsURL": "",
+	"MarketplaceURL": "",
+	"SupportURL": "https://discord.gg/Yu8F8w8tDw",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "itlightning",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault",
+			"PlatformAllowList": [
+				"Win64",
+				"Linux",
+				"LinuxArm64"
+			],
+			"WhitelistPlatforms": [
+				"Win64",
+				"Linux",
+				"LinuxAArch64"
+			]
+		}
+	]
+}
