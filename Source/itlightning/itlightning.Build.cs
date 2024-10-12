@@ -1,5 +1,5 @@
 // Copyright (C) 2024 IT Lightning, LLC. All rights reserved.
-// Licensed under the MIT license - see LICENSE.md
+// Licensed under the MIT license - see LICENSE
 
 using UnrealBuildTool;
 

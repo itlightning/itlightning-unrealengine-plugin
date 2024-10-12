@@ -2,7 +2,7 @@
 	"FileVersion": 3,
 	"Version": 1,
 	"VersionName": "1.0",
-	"FriendlyName": "itlightning",
+	"FriendlyName": "IT Lightning",
 	"Description": "Ship game engine logs to IT Lightning, a cost effective, petabyte-scale cloud logging service that's actually a joy to use",
 	"Category": "Other",
 	"CreatedBy": "IT Lightning, LLC",

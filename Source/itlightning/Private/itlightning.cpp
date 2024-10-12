@@ -1,5 +1,5 @@
 // Copyright (C) 2024 IT Lightning, LLC. All rights reserved.
-// Licensed under the MIT license - see LICENSE.md
+// Licensed under the MIT license - see LICENSE
 
 #include "itlightning.h"
 #include <GenericPlatformOutputDevices.h>
@@ -8,6 +8,40 @@
 #define LOCTEXT_NAMESPACE "FitlightningModule"
 
 DEFINE_LOG_CATEGORY(LogPluginITLightning);
+
+const TCHAR* GetITLGameMode(bool ForINISection)
+{
+	if (GIsEditor)
+	{
+		return ForINISection ? TEXT("Editor") : TEXT("editor");
+	}
+	else if (IsRunningCommandlet())
+	{
+		return ForINISection ? TEXT("Commandlet") : TEXT("commandlet");
+	}
+	else if (IsRunningDedicatedServer())
+	{
+		return ForINISection ? TEXT("Server") : TEXT("server");
+	}
+	else
+	{
+		return ForINISection ? TEXT("Client") : TEXT("client");
+	}
+}
+
+FString GetITLINISectionName()
+{
+	const TCHAR* GameMode = GetITLGameMode(true);
+	return FString(ITL_CONFIG_SECTION_NAME).Append(GameMode);
+}
+
+FString GetITLLogFileName(TCHAR* LogTypeName)
+{
+	const TCHAR* GameMode = GetITLGameMode(false);
+	FString Name = FString(TEXT("itlightning-"), FCString::Strlen(GameMode) + FCString::Strlen(LogTypeName) + FCString::Strlen(TEXT("-.log")));
+	Name.Append(GameMode).Append("-").Append(LogTypeName).Append(".log");
+	return Name;
+}
 
 class FITLLogOutputDeviceInitializer
 {
@@ -20,42 +54,67 @@ public:
 		{
 			FString ParentDir = FPaths::GetPath(FPaths::ConvertRelativePathToFull(FGenericPlatformOutputDevices::GetAbsoluteLogFilename()));
 			LogFilePath = FPaths::Combine(ParentDir, Filename);
-			LogDevice = MakeUnique<FOutputDeviceFile>(GetData(LogFilePath), /*bDisableBackup*/true, /*bAppendIfExists*/true, /*bCreateWriterLazily*/true, [](const TCHAR* AbsPathname) {});
+			LogDevice = MakeUnique<FOutputDeviceFile>(*LogFilePath, /*bDisableBackup*/true, /*bAppendIfExists*/true, /*bCreateWriterLazily*/true, [](const TCHAR* AbsPathname) {});
 		}
 	}
 };
 
-FITLLogOutputDeviceInitializer& GetITLInternalGameLog() {
-	// TODO: change the filename based on whether we're in the editor, client game, server, etc.
+FITLLogOutputDeviceInitializer& GetITLInternalGameLog()
+{
 	static FITLLogOutputDeviceInitializer Singleton;
-	Singleton.InitLogDevice(TEXT("itlightning-game.log"));
+	FString LogFileName = GetITLLogFileName(TEXT("run"));
+	Singleton.InitLogDevice(*LogFileName);
 	return Singleton;
 }
 
-FITLLogOutputDeviceInitializer& GetITLInternalOpsLog() {
+FITLLogOutputDeviceInitializer& GetITLInternalOpsLog()
+{
 	static FITLLogOutputDeviceInitializer Singleton;
-	Singleton.InitLogDevice(TEXT("itlightning-operations.log"));
+	FString LogFileName = GetITLLogFileName(TEXT("ops"));
+	Singleton.InitLogDevice(*LogFileName);
 	return Singleton;
 }
 
 void FitlightningModule::StartupModule()
 {
+	if (LoggingActive)
+	{
+		return;
+	}
+
+	LoadSettings();
+	if (SettingAgentID.IsEmpty() || SettingAuthToken.IsEmpty())
+	{
+		UE_LOG(LogPluginITLightning, Log, TEXT("Not yet configured for this game mode. In DefaultEngine.ini section %s configure AgentID and AuthToken to enable. Consider using a different agent for Editor vs Client vs Server mode."), *GetITLINISectionName());
+		return;
+	}
+
 	// Log all messages to the internal game log, which we will then read from the file as we push log data to the cloud
 	GLog->AddOutputDevice(GetITLInternalGameLog().LogDevice.Get());
-	UE_LOG(LogEngine, Log, TEXT("IT Lightning logger starting up..."));
-	//TODO: is this the right way to read plugin config values? see OodleNetwork
-	//FString ConfigFilePath = FPaths::ProjectConfigDir() + TEXT("Defaultitlightning.ini");
-	//GConfig->LoadFile(ConfigFilePath);
-	FString AgentID = GConfig->GetStr(ITL_CONFIG_SECTION_NAME, TEXT("AgentID"), GEngineIni);
-	FString AuthToken = GConfig->GetStr(ITL_CONFIG_SECTION_NAME, TEXT("AuthToken"), GEngineIni);
-	UE_LOG(LogEngine, Log, TEXT("IT Lightning config values: agentID=%s, authToken=%s"), GetData(AgentID), GetData(AuthToken));
+	LoggingActive = true;
+	UE_LOG(LogPluginITLightning, Log, TEXT("Starting up. GameMode=%s, AgentID=%s"), GetITLGameMode(true), *SettingAgentID);
 }
 
 void FitlightningModule::ShutdownModule()
 {
-	UE_LOG(LogEngine, Log, TEXT("IT Lightning logger shutting down..."));
-	// TODO: try to flush pending logs to the cloud. If successful, then we should purge the itl game log and delete the progress marker to 0.
-	// (fully flushed logs should not leave behind the itlightning-game.log file). That way, on a crash, we'll know we need to continue where we left off.
+	if (LoggingActive)
+	{
+		UE_LOG(LogPluginITLightning, Log, TEXT("Shutting down and flushing logs..."));
+		GLog->Flush();
+		// TODO: try to flush pending logs to the cloud. If successful, then we should purge the itl game log and delete the progress marker to 0.
+		// (fully flushed logs should not leave behind the itlightning log files). That way, on a crash, we'll know we need to continue where we left off.
+		UE_LOG(LogPluginITLightning, Log, TEXT("Shutdown."));
+		LoggingActive = false;
+	}
+}
+
+void FitlightningModule::LoadSettings()
+{
+	FString Section = GetITLINISectionName();
+	SettingAgentID = GConfig->GetStr(*Section, TEXT("AgentID"), GEngineIni);
+	SettingAgentID.TrimStartAndEndInline();
+	SettingAuthToken = GConfig->GetStr(*Section, TEXT("AuthToken"), GEngineIni);
+	SettingAuthToken.TrimStartAndEndInline();
 }
 
 #undef LOCTEXT_NAMESPACE
