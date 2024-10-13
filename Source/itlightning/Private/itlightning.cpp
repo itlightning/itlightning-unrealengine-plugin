@@ -89,10 +89,15 @@ void FitlightningModule::StartupModule()
 		return;
 	}
 
-	// Log all messages to the internal game log, which we will then read from the file as we push log data to the cloud
-	GLog->AddOutputDevice(GetITLInternalGameLog().LogDevice.Get());
-	LoggingActive = true;
-	UE_LOG(LogPluginITLightning, Log, TEXT("Starting up. GameMode=%s, AgentID=%s"), GetITLGameMode(true), *SettingAgentID);
+	float DiceRoll = FMath::FRandRange(0.0, 100.0);
+	LoggingActive = DiceRoll < SettingActivationPercent;
+	if (LoggingActive)
+	{
+		// Log all messages to the internal game log, which we will then read from the file as we push log data to the cloud
+		GLog->AddOutputDevice(GetITLInternalGameLog().LogDevice.Get());
+		LoggingActive = true;
+	}
+	UE_LOG(LogPluginITLightning, Log, TEXT("Starting up. GameMode=%s, AgentID=%s, ActivationPercent=%lf, DiceRoll=%f, Activated=%s"), GetITLGameMode(true), *SettingAgentID, SettingActivationPercent, DiceRoll, LoggingActive ? TEXT("yes") : TEXT("no"));
 }
 
 void FitlightningModule::ShutdownModule()
@@ -115,6 +120,21 @@ void FitlightningModule::LoadSettings()
 	SettingAgentID.TrimStartAndEndInline();
 	SettingAuthToken = GConfig->GetStr(*Section, TEXT("AuthToken"), GEngineIni);
 	SettingAuthToken.TrimStartAndEndInline();
+	FString StringActivationPercent;
+	GConfig->GetString(*Section, TEXT("ActivationPercent"), StringActivationPercent, GEngineIni);
+	StringActivationPercent.TrimStartAndEndInline();
+	if (!GConfig->GetDouble(*Section, TEXT("ActivationPercent"), SettingActivationPercent, GEngineIni))
+	{
+		SettingActivationPercent = 100.0;
+	}
+	else
+	{
+		// If it was an empty string, treat as 100%
+		if (StringActivationPercent.IsEmpty())
+		{
+			SettingActivationPercent = 100.0;
+		}
+	}
 }
 
 #undef LOCTEXT_NAMESPACE

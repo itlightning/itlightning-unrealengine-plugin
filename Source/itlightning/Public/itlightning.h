@@ -14,7 +14,7 @@ class FitlightningModule : public IModuleInterface
 {
 
 public:
-	FitlightningModule() : LoggingActive(false) {}
+	FitlightningModule() : LoggingActive(false), SettingActivationPercent(100.0) {}
 
 	/** IModuleInterface implementation */
 	virtual void StartupModule() override;
@@ -27,4 +27,5 @@ private:
 	bool LoggingActive;
 	FString SettingAgentID;
 	FString SettingAuthToken;
+	double SettingActivationPercent;
 };
