@@ -77,6 +77,19 @@ FITLLogOutputDeviceInitializer& GetITLInternalOpsLog()
 
 void FitlightningModule::StartupModule()
 {
+	UE_LOG(LogPluginITLightning, Log, TEXT("Plugin compiled on %s %s"), TEXT(__DATE__), TEXT(__TIME__));
+	if (GIsEditor)
+	{
+		// We must force date/times to be logged in UTC for consistency.
+		// Inside of the itlightninginit module, it forces that setting even before config is loaded.
+		FString DefaultEngineIniPath = FPaths::ProjectConfigDir() + TEXT("DefaultEngine.ini");
+		FString CurrentLogTimesValue = GConfig->GetStr(TEXT("LogFiles"), TEXT("LogTimes"), DefaultEngineIniPath);
+		if (CurrentLogTimesValue != TEXT("UTC")) {
+			UE_LOG(LogPluginITLightning, Warning, TEXT("Changing DefaultEngine.ini so [LogFiles]LogTimes=UTC"));
+			GConfig->SetString(TEXT("LogFiles"), TEXT("LogTimes"), TEXT("UTC"), DefaultEngineIniPath);
+		}
+	}
+
 	if (LoggingActive)
 	{
 		return;
